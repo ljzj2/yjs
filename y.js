@@ -20,19 +20,23 @@ function process_for() {
     for (var i = 0; i < doms.length; i++) {
         let f_id = lid();
         let ids = [];
-        let html = '<div id="' + f_id + '" style="position:absolute:width:0;height:0;display:none;"></div>';
+        let html = '<div ' + f_id + ' ></div>';
         let val = doms[i].dom.getAttribute('l-for');
+        let template = doms[i].dom.outerHTML;
         doms[i].dom.removeAttribute('l-for');
         if (window[val] != null) {
             for (let j = 0; j < window[val].length; j++) {
                 let id = lid();
-                doms[i].dom.setAttribute('id', id);
+                doms[i].dom.setAttribute(id, '');
                 html += doms[i].dom.outerHTML;
                 ids.push(id);
+                doms[i].dom.removeAttribute(id);
             }
         }
         doms[i].dom.outerHTML = html;
-        forNodeList.push({ dom: doms[i].dom, ids: ids, value: val, template: doms[i].dom.outerHTML });
+        let _dom = document.createComment(f_id);
+        document.querySelector('[' + f_id + ']').replaceWith(_dom);
+        forNodeList.push({ dom: _dom, ids: ids, value: val, template: template, value: val });
     }
 
     return;
@@ -71,14 +75,22 @@ function process_bind() {
     }
 }
 
+var to_add = [];
 function process_text() {
     var ts = document.querySelectorAll('[l-t]');
     for (var i = 0; i < ts.length; i++) {
-        let arr = _get_text(ts[i].textContent);
-        for (var j = 0; j < arr.length; j++) {
-            if(arr[j]!=''){
-                
-            }
+        getNodes(ts[i]);
+    }
+
+    for (var i = 0; i < to_add.length; i++) {
+        to_add[i]._dom.parentElement.insertBefore(to_add[i].dom, to_add[i]._dom);
+        if (to_add[i].value[0] == '.' || (to_add[i].value[0] == ' ' && to_add[i].value[1] == '.')) {
+            textNodeList.push({ dom: to_add[i].dom, value: to_add[i].value.replace('\n', '') });
+        }
+    }
+    for (var i = 0; i < to_add.length; i++) {
+        if (to_add[i]._dom != null && to_add[i]._dom != undefined && to_add[i]._dom.parentElement != null) {
+            to_add[i]._dom.parentElement.removeChild(to_add[i]._dom);
         }
     }
 }
@@ -102,7 +114,7 @@ document.addEventListener('DOMContentLoaded', function () {
 function lid() {
     let id = '';
     for (let i = 0; i < 10; i++) {
-        id += c[parseInt(Math.random() * c.length)];
+        id += c[parseInt(Math.random() * (i == 0 ? c.length - 10 : c.length))];
     }
     return id;
 }
@@ -113,7 +125,7 @@ function _get_text(text) {
     let temp = '';
     let begin = false;
     text = ' ' + text;
-    for (var i = 0; i < text.length - 1; i++) {
+    for (var i = 0; i < text.length; i++) {
         if (text[i] == ' ' && text[i + 1] == '.') {
             t_a.push(temp);
             temp = '';
@@ -132,4 +144,41 @@ function _get_text(text) {
         t_a.push(temp);
     }
     return t_a;
+}
+
+
+function getNodes(d) {
+    for (var i = 0; i < d.childNodes.length; i++) {
+        if (d.childNodes[i].nodeType == 1) {
+            getNodes(d.childNodes[i])
+        }
+        if (d.childNodes[i].nodeType == 3) {
+            var content = ' ' + d.childNodes[i].textContent;
+
+            content = content.replace(/\n/g, '');
+            if (content.indexOf(' .') >= 0) {
+                var arr = _get_text(content);
+                for (var j = 0; j < arr.length; j++) {
+                    let val = window;
+                    if (arr[j][0] == '.' || (arr[j].length > 1 && arr[j][0] == ' ' && arr[j][1] == '.')) {
+                        let x = arr[j].split('.');
+                        for (var n = 0; n < x.length; n++) {
+                            if (x[n] != null && x[n] != undefined && x[n] != '' && x[n] != ' ') {
+                                if (val != null && val != undefined) {
+                                    val = val[x[n]];
+                                }
+                                else {
+                                    val = '';
+                                }
+                            }
+                        }
+                    }
+                    if (val == undefined || typeof val == 'object') {
+                        val = '';
+                    }
+                    to_add.push({ _dom: d.childNodes[i], dom: document.createTextNode(val), value: arr[j] });
+                }
+            }
+        }
+    }
 }
