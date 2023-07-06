@@ -5,9 +5,10 @@ var textNodeList = [];
 function process_for() {
     var fs = document.querySelectorAll('[l-for]');
     let doms = [];
-    for (var i = 0; i < fs.length - 1; i++) {
+    for (var i = 0; i < fs.length; i++) {
         doms.push({ dom: fs[i], index: 0 });
     }
+
     for (var i = 0; i < doms.length; i++) {
         for (var j = i + 1; j < doms.length; j++) {
             if (doms[i].dom.outerHTML.indexOf(doms[j].dom.outerHTML)) {
@@ -24,13 +25,14 @@ function process_for() {
         let val = doms[i].dom.getAttribute('l-for');
         let template = doms[i].dom.outerHTML;
         doms[i].dom.removeAttribute('l-for');
-        if (window[val] != null) {
-            for (let j = 0; j < window[val].length; j++) {
+        if (window[val.split('#')[0]] != null) {
+            for (let j = 0; j < window[val.split('#')[0]].length; j++) {
                 let id = lid();
                 doms[i].dom.setAttribute(id, '');
                 html += doms[i].dom.outerHTML;
                 ids.push(id);
                 doms[i].dom.removeAttribute(id);
+                console.log(doms[i].dom.textContent);
             }
         }
         doms[i].dom.outerHTML = html;
@@ -173,12 +175,32 @@ function getNodes(d) {
                             }
                         }
                     }
+                    else {
+                        val = arr[j];
+                    }
                     if (val == undefined || typeof val == 'object') {
                         val = '';
                     }
                     to_add.push({ _dom: d.childNodes[i], dom: document.createTextNode(val), value: arr[j] });
                 }
             }
+        }
+    }
+}
+
+function _getValue(n) {
+    let arr = n.split('.');
+    if (arr.length <= 0) {
+        return '';
+    }
+    if (arr.length == 1) {
+        return window[arr[0]];
+    }
+    let val = window;
+    for (var i = 0; i < arr.length; i++) {
+        val = val[arr[i]];
+        if (val == undefined || val == null) {
+            return '';
         }
     }
 }
