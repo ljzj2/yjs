@@ -24,42 +24,27 @@ function process_for() {
         let html = '<div ' + f_id + ' ></div>';
         let val = doms[i].dom.getAttribute('l-for');
         let template = doms[i].dom.outerHTML;
+        let template_dom = doms[i].dom;
         doms[i].dom.removeAttribute('l-for');
         if (window[val.split('#')[0]] != null) {
             for (let j = 0; j < window[val.split('#')[0]].length; j++) {
                 let id = lid();
+                doms[i].dom = template_dom;
                 doms[i].dom.setAttribute(id, '');
+
+                //for-text
+                forNodesValue(doms[i].dom, window[val.split('#')[0]][j], val.split('#').length > 1 ? val.split('#')[1] : '');
+                //for-text
+
                 html += doms[i].dom.outerHTML;
                 ids.push(id);
                 doms[i].dom.removeAttribute(id);
-                console.log(doms[i].dom.textContent);
             }
         }
         doms[i].dom.outerHTML = html;
         let _dom = document.createComment(f_id);
         document.querySelector('[' + f_id + ']').replaceWith(_dom);
-        forNodeList.push({ dom: _dom, ids: ids, value: val, template: template, value: val });
-    }
-
-    return;
-    for (var i = 0; i < fs.length; i++) {
-        let f_id = lid();
-        let ids = [];
-        let html = '<div id="' + f_id + '" style="position:absolute;width:0;height:0;display:none;"></div>';
-        let val = fs[i].getAttribute('l-for');
-
-        fs[i].removeAttribute('l-for');
-        if (window[val] != null) {
-            for (let j = 0; j < window[val].length; j++) {
-                let id = lid();
-                fs[i].setAttribute('id', id);
-                html += fs[i].outerHTML;
-                ids.push(id);
-            }
-        }
-        fs[i].outerHTML = html;
-
-        forNodeList.push({ dom: document.getElementById(f_id), ids: ids, value: val, template: fs[i].outerHTML });
+        forNodeList.push({ dom: _dom, ids: ids, value: val, template: template, value: val, val: window[val.split('#')[0]] });
     }
 }
 
@@ -81,6 +66,7 @@ var to_add = [];
 function process_text() {
     var ts = document.querySelectorAll('[l-t]');
     for (var i = 0; i < ts.length; i++) {
+        ts[i].removeAttribute('l-t');
         getNodes(ts[i]);
     }
 
@@ -100,8 +86,22 @@ function process_text() {
 function _update() {
     //更新for
     for (var i = 0; i < forNodeList.length; i++) {
-
+        if (!_arr_equal(window[forNodeList[i].value], forNodeList[i].val)) {
+            if (forNodeList[i].ids != null && forNodeList[i].ids != undefined && forNodeList[i].ids.length > 0) {
+                for (var j = 0; j < forNodeList[i].ids.length; j++) {
+                    document.querySelectorAll('[' + forNodeList[i].ids[j] + ']').outerHTML = '';
+                }
+            }
+            var its = window[forNodeList[i].value];
+            for (var i = 0; i < its.length; i++) {
+                var d = document.createElement('div');
+                d.outerHTML = forNodeList[i].template;
+                document.body.insertBefore(forNodeList[i].dom);
+            }
+        }
     }
+
+    //更新text
 }
 
 
@@ -188,6 +188,29 @@ function getNodes(d) {
     }
 }
 
+function forNodesValue(d, val, name) {
+    if (name == null || name == '' || name == undefined) {
+        return;
+    }
+    let fors = []; console.log(d.textContent);
+    for (var i = 0; i < d.childNodes.length; i++) {
+        if (d.childNodes[i].nodeType == 1) {
+            forNodesValue(d.childNodes[i], val);
+        }
+        if (d.childNodes[i].nodeType == 3) {
+            let arr = d.childNodes[i].textContent.split('.' + name + '.');
+            for (var j = 0; j < arr.length; j++) {
+                var v = arr[j].split(' ');
+                for (var n = 0; n < v.length; n++) {
+                    if (v[n] != '' && val[v[n]] != null && val[v[n]] != '' && val[v[n]] != undefined) {
+                        d.childNodes[i].textContent = (d.childNodes[i].textContent + ' ').replace('.' + name + '.' + v[n] + ' ', val[v[n]] + ' '); console.log(val[v[n]]);
+                    }
+                }
+            }
+        }
+    }
+}
+
 function _getValue(n) {
     let arr = n.split('.');
     if (arr.length <= 0) {
@@ -203,4 +226,27 @@ function _getValue(n) {
             return '';
         }
     }
+}
+
+function _arr_equal(a, b) {
+    if (!a || !b) {
+        return false;
+    }
+    if (a.length != b.length) {
+        return false;
+    }
+    if (a === b) {
+        return true;
+    }
+    for (var i = 0; i < a.length; i++) {
+        if (a[i] instanceof Array && b[i] instanceof Array) {
+            if (!_arr_equal(a[i], b[i])) {
+                return false;
+            }
+        }
+        else if (a[i] != b[i]) {
+            return false;
+        }
+    }
+    return true;
 }
