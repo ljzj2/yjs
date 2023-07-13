@@ -24,26 +24,21 @@ function process_for() {
         let html = '<div ' + f_id + ' ></div>';
         let val = doms[i].dom.getAttribute('l-for');
         let template = doms[i].dom.outerHTML;
-        let template_dom = doms[i].dom;
-        doms[i].dom.removeAttribute('l-for');
-        if (window[val.split('#')[0]] != null) {
-            for (let j = 0; j < window[val.split('#')[0]].length; j++) {
-                let id = lid();
-                doms[i].dom = template_dom;
-                doms[i].dom.setAttribute(id, '');
-
-                //for-text
-                forNodesValue(doms[i].dom, window[val.split('#')[0]][j], val.split('#').length > 1 ? val.split('#')[1] : '');
-                //for-text
-
-                html += doms[i].dom.outerHTML;
-                ids.push(id);
-                doms[i].dom.removeAttribute(id);
-            }
-        }
         doms[i].dom.outerHTML = html;
         let _dom = document.createComment(f_id);
         document.querySelector('[' + f_id + ']').replaceWith(_dom);
+        if (window[val.split('#')[0]] != null) {
+            for (let j = 0; j < window[val.split('#')[0]].length; j++) {
+                let id = lid();
+
+                var d = document.createElement("div");
+                _dom.parentElement.insertBefore(d, _dom);
+                d.outerHTML = _process_for_template(template, val, val.split('#').length > 1 ? window[val.split('#')[0]][j] : '', id);
+
+                ids.push(id);
+            }
+        }
+
         forNodeList.push({ dom: _dom, ids: ids, value: val, template: template, value: val, val: window[val.split('#')[0]] });
     }
 }
@@ -73,7 +68,7 @@ function process_text() {
     for (var i = 0; i < to_add.length; i++) {
         to_add[i]._dom.parentElement.insertBefore(to_add[i].dom, to_add[i]._dom);
         if (to_add[i].value[0] == '.' || (to_add[i].value[0] == ' ' && to_add[i].value[1] == '.')) {
-            textNodeList.push({ dom: to_add[i].dom, value: to_add[i].value.replace('\n', '') });
+            textNodeList.push({ dom: to_add[i].dom, value: to_add[i].value.replace('\n', ''), val: to_add[i].dom.textContent });
         }
     }
     for (var i = 0; i < to_add.length; i++) {
@@ -89,19 +84,35 @@ function _update() {
         if (!_arr_equal(window[forNodeList[i].value], forNodeList[i].val)) {
             if (forNodeList[i].ids != null && forNodeList[i].ids != undefined && forNodeList[i].ids.length > 0) {
                 for (var j = 0; j < forNodeList[i].ids.length; j++) {
-                    document.querySelectorAll('[' + forNodeList[i].ids[j] + ']').outerHTML = '';
+                    document.querySelector('[' + forNodeList[i].ids[j] + ']').outerHTML = '';
                 }
             }
-            var its = window[forNodeList[i].value];
-            for (var i = 0; i < its.length; i++) {
-                var d = document.createElement('div');
-                d.outerHTML = forNodeList[i].template;
-                document.body.insertBefore(forNodeList[i].dom);
+
+            var its = window[forNodeList[i].value.split('#')[0]];
+            forNodeList[i].ids = [];
+            if (its != null && its != undefined) {
+                for (var j = 0; j < its.length; j++) {
+                    var d = document.createElement("div");
+                    document.body.insertBefore(d, forNodeList[i].dom);
+                    var id = lid();
+                    d.outerHTML = _process_for_template(forNodeList[i].template, forNodeList[i].value, its[j], id);
+                    forNodeList[i].ids.push(id);
+                }
             }
         }
     }
 
     //更新text
+
+    for (var i = 0; i < textNodeList.length; i++) {
+        var val = window[textNodeList[i].value.substring(1)];
+        if (val == null || val == undefined) {
+            val = '';
+        }
+        if (val != textNodeList[i].val) {
+            textNodeList[i].dom.textContent = val;
+        }
+    }
 }
 
 
@@ -249,4 +260,29 @@ function _arr_equal(a, b) {
         }
     }
     return true;
+}
+
+
+function _process_for_template(t, val, o, i) {
+    t = t.replace('l-for="' + val + '"', '');
+    t = t.replace(' ', ' ' + i);
+
+    if (o != null && o != undefined && o != '' && typeof (o) == 'object') if (val.split('#').length > 1) {
+        var v = val.split('#')[1];
+        var f = t.split('.' + v + '.');
+        for (var i = 0; i < f.length; i++) {
+            var _arr = f[i].split(' ');
+            for (var j = 0; j < _arr.length; j++) {
+                if (_arr[j] != null && _arr[j] != undefined && _arr[j] != '') {
+                    if (o[_arr[j]] == null || o[_arr[j]] == undefined) {
+                        o[_arr[_arr[j]]] = '';
+                    }
+
+                    t = t.replace('.' + v + '.' + _arr[j], o[_arr[j]]);
+                }
+            }
+        }
+    }
+
+    return t;
 }
